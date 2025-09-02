@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Multi-Tool: PDF to PNG</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf_viewer.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <style>
+        /* CSS Variables for Colors and Shadows */
+        :root {
+            /* Primary Brand Colors */
+            --primary-orange: #ff4d03;
+            --primary-orange-hover: #cc3d02;
+            --primary-black: #000000;
+            --primary-white: #ffffff; /* Explicitly define white for contrast */
+
+            /* Dark Theme Greys */
+            --dark-bg: #222222; /* Body background */
+            --dark-section-bg: #333333; /* General section/container background */
+            --dark-element-bg: #444444; /* Inputs, table cells, text areas, subtle backgrounds */
+            --dark-border: #555555; /* General borders, disabled elements */
+            --dark-table-header-bg: #555555; /* Table header background - kept for consistency, though not directly used now */
+            --dark-alt-row-bg: #555555; /* Alternate table row background - kept for consistency, though not directly used now */
+
+            /* Text Colors */
+            --light-text: #e0e0e0; /* Main body and section text */
+            --medium-light-text: #bbbbbb; /* Subtler text like filenames, labels */
+            --muted-text: #999999; /* Disabled button text, less important info */
+
+            /* Box Shadows */
+            --shadow-light: 0 4px 10px rgba(0,0,0,0.3);
+            --shadow-medium: 0 8px 20px rgba(0,0,0,0.4);
+            --shadow-deep: 0 12px 30px rgba(0, 0, 0, 0.4);
+            --shadow-button-hover: 0 6px 14px rgba(0, 0, 0, 0.5);
+            --shadow-button-td: 0 2px 4px rgba(0, 0, 0, 0.2); /* Kept for consistency, though not directly used now */
+            --shadow-button-td-hover: 0 3px 6px rgba(0, 0, 0, 0.3); /* Kept for consistency, though not directly used now */
+        }
+
+        /* Base and Common Styles for the entire page */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            /* Adjusted padding as navbar is removed */
+            padding: 40px 20px; 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px; /* Space between different tool sections */
+            background: var(--dark-bg);
+            color: var(--light-text);
+            line-height: 1.6;
+        }
+
+        /* Generic container for each section to apply consistent padding and shadow */
+        .section-container {
+            border-radius: 20px;
+            padding: 30px;
+            background: var(--dark-section-bg);
+            box-shadow: var(--shadow-deep);
+            width: 90%;
+            max-width: 980px;
+            color: var(--light-text);
+        }
+
+        /* Base style for form inputs and selects (kept for potential future use or consistency) */
+        .form-input-base {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 16px;
+            border-radius: 12px;
+            border: 2px solid var(--dark-border);
+            background: var(--dark-element-bg);
+            color: var(--light-text);
+            transition: border-color 0.3s ease, background 0.3s ease;
+            outline-offset: 2px;
+        }
+
+        .form-input-base:hover {
+            background: #555555;
+            border-color: #888888;
+        }
+
+        .form-input-base:focus {
+            outline: none;
+            border-color: #888888;
+            box-shadow: 0 0 5px 2px rgba(136, 136, 136, 0.5);
+        }
+
+        /* Base Button Styles */
+        .btn-base {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--shadow-light);
+            transition: background-color 0.3s, box-shadow 0.3s;
+            user-select: none;
+            color: var(--primary-black); /* Default text color for orange buttons */
+            min-width: 120px; /* Common minimum width */
+        }
+
+        .btn-primary {
+            background: var(--primary-orange);
+        }
+
+        .btn-primary:not(:disabled):hover {
+            background: var(--primary-orange-hover);
+            box-shadow: var(--shadow-button-hover);
+        }
+
+        .btn-base:disabled {
+            background: var(--dark-border);
+            cursor: not-allowed;
+            box-shadow: none;
+            color: var(--muted-text);
+        }
+
+        .btn-base:focus {
+            outline: none;
+            box-shadow: 0 0 8px 3px rgba(136, 136, 136, 0.5);
+        }
+
+        /* --- Styles for PDF to PNG Section --- */
+        .pdf-section {
+            color: var(--light-text);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 20px;
+        }
+        .pdf-section h1 { /* Changed from h2 to h1 */
+            font-weight: 700;
+            color: var(--primary-orange);
+            margin-bottom: 10px;
+            user-select: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .pdf-section input[type="file"] {
+            width: 280px; /* Original specific width */
+            max-width: 90%; /* Original specific max-width */
+            padding: 20px;
+            font-size: 16px;
+            border-radius: 12px;
+            border: 2px dashed var(--dark-border);
+            background: var(--dark-element-bg);
+            color: var(--medium-light-text);
+            transition: border-color 0.3s ease, background 0.3s ease;
+            outline-offset: 2px;
+            cursor: pointer;
+        }
+        .pdf-section input[type="file"]:hover {
+            background: #555555;
+            border-color: #888888;
+        }
+        .pdf-section input[type="file"]:focus {
+            outline: none;
+            border-color: #888888;
+            box-shadow: 0 0 5px 2px #888888;
+        }
+
+        .pdf-section #preview {
+            margin: 0 auto;
+            width: 300px; /* Made smaller */
+            height: 300px; /* Made smaller */
+            object-fit: contain;
+            border-radius: 16px;
+            box-shadow: var(--shadow-medium);
+            background: var(--dark-element-bg);
+            border: 2px solid var(--dark-border);
+            transition: box-shadow 0.3s ease;
+        }
+        .pdf-section #preview:hover {
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+        }
+        .pdf-section #filename {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--medium-light-text);
+            margin-top: 12px;
+            user-select: text;
+            max-width: 500px; /* Keeping max-width for filename as it's text */
+            word-break: break-word;
+        }
+        .pdf-section .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .pdf-section button {
+            border: none;
+            border-radius: 10px;
+            padding: 6px 10px; /* Even smaller padding */
+            font-size: 20px; /* Adjusted font size for emojis */
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--shadow-light);
+            transition: background-color 0.3s, box-shadow 0.3s;
+            user-select: none;
+            color: var(--primary-black);
+            min-width: auto; /* Allow button to shrink to content size */
+            background: var(--primary-orange);
+        }
+        .pdf-section button:disabled {
+            background: var(--dark-border);
+            cursor: not-allowed;
+            box-shadow: none;
+            color: var(--muted-text);
+        }
+        .pdf-section button:not(:disabled):hover {
+            background: var(--primary-orange-hover);
+            box-shadow: var(--shadow-button-hover);
+        }
+        .pdf-section button:focus {
+            outline: none;
+            box-shadow: 0 0 8px 3px rgba(136, 136, 136, 0.5);
+        }
+        .pdf-section canvas {
+            display: none;
+        }
+        /* Responsive for PDF section */
+        @media (max-width: 540px) {
+            .pdf-section #preview {
+                width: 70vw; /* Adjusted for smaller mobile preview */
+                height: 70vw; /* Adjusted for smaller mobile preview */
+            }
+            .pdf-section #filename {
+                max-width: 90vw;
+                font-size: 16px;
+            }
+            .pdf-section input[type="file"] {
+                width: 90vw;
+            }
+            .pdf-section button {
+                min-width: auto; /* Ensure it remains auto on small screens */
+                padding: 4px 8px; /* Even smaller padding for mobile */
+                font-size: 18px; /* Slightly smaller emoji on mobile */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="section-container pdf-section">
+        <h1>PDF to PNG (500px*500px)</h1>
+        <input type="file" id="pdf-upload" accept="application/pdf" multiple />
+        
+        <img id="preview" alt="PDF preview" />
+        <div id="filename"></div>
+        
+        <div class="buttons">
+            <button id="prev-btn" disabled>◀️</button>
+            <button id="next-btn" disabled>▶️</button>
+            <button id="download-png" style="display:none;">⬇️ PNG</button>
+            <button id="download-zip" style="display:none;">📦 ZIP</button>
+        </div>
+        <canvas id="canvasPdf"></canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        const inputPdf = document.getElementById('pdf-upload');
+        const preview = document.getElementById('preview');
+        const filenameDiv = document.getElementById('filename');
+        const canvasPdf = document.getElementById('canvasPdf');
+        const ctxPdf = canvasPdf.getContext('2d');
+        const btnPNG = document.getElementById('download-png');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const btnZIP = document.getElementById('download-zip'); // New: Reference to the ZIP button
+
+        let images = [];
+        let currentIndex = 0;
+
+        inputPdf.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files).filter(f => f.type.includes('pdf'));
+            if (!files.length) return;
+
+            images = [];
+            currentIndex = 0;
+            disableNavButtons(true);
+            btnPNG.style.display = 'none';
+            btnZIP.style.display = 'none'; // New: Hide ZIP button on new upload
+            preview.src = '';
+            filenameDiv.textContent = '';
+
+            for (const file of files) {
+                const imgDataURL = await processPDF(file);
+                images.push({ dataURL: imgDataURL, filename: file.name.replace(/\.pdf$/i, '.png') });
+            }
+
+            if (images.length) {
+                showImage(0);
+                disableNavButtons(false);
+                btnZIP.style.display = 'inline-block'; // New: Show ZIP button when images are available
+            }
+        });
+
+        function disableNavButtons(disable) {
+            prevBtn.disabled = disable || currentIndex === 0;
+            nextBtn.disabled = disable || currentIndex === images.length - 1;
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                showImage(currentIndex);
+                disableNavButtons(false);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentIndex < images.length - 1) {
+                currentIndex++;
+                showImage(currentIndex);
+                disableNavButtons(false);
+            }
+        });
+
+        function showImage(index) {
+            preview.src = images[index].dataURL;
+            filenameDiv.textContent = images[index].filename;
+            btnPNG.style.display = 'inline-block';
+        }
+
+        btnPNG.onclick = () => {
+            const { dataURL, filename } = images[currentIndex];
+            downloadImage(dataURL, filename);
+        };
+
+        // New: Function to download all images as a ZIP
+        btnZIP.onclick = async () => {
+            if (images.length === 0) return;
+
+            const zip = new JSZip();
+            
+            // Add each image to the zip file
+            images.forEach(image => {
+                // Remove the "data:image/png;base64," prefix to get raw base64 data
+                const base64Data = image.dataURL.split(',')[1];
+                zip.file(image.filename, base64Data, { base64: true });
+            });
+
+            try {
+                // Generate the zip file
+                const zipBlob = await zip.generateAsync({ type: "blob" });
+
+                // Create a download link for the zip file
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(zipBlob);
+                link.download = 'converted_pdfs.zip'; // Default name for the zip file
+                document.body.appendChild(link); // Append to body to make it clickable
+                link.click();
+                document.body.removeChild(link); // Clean up the temporary link
+                URL.revokeObjectURL(link.href); // Release the object URL
+            } catch (error) {
+                console.error("Error generating ZIP file:", error);
+                // In a real application, you might show a user-friendly error message here
+            }
+        };
+
+        function downloadImage(dataURL, filename) {
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = filename;
+            link.click();
+        }
+
+        async function processPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const page = await pdf.getPage(1);
+
+            const viewport = page.getViewport({ scale: 4 });
+            canvasPdf.width = viewport.width;
+            canvasPdf.height = viewport.height;
+            await page.render({ canvasContext: ctxPdf, viewport }).promise;
+
+            const imageData = ctxPdf.getImageData(0, 0, canvasPdf.width, canvasPdf.height);
+            const { data, width, height } = imageData;
+
+            let top = height, bottom = 0, left = width, right = 0;
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4;
+                    const [r, g, b, a] = data.slice(i, i + 4);
+                    if (a > 0 && !(r > 240 && g > 240 && b > 240)) {
+                        if (y < top) top = y;
+                        if (y > bottom) bottom = y;
+                        if (x < left) left = x;
+                        if (x > right) right = x;
+                    }
+                }
+            }
+
+            const padding = 60;
+            top = Math.max(0, top - padding);
+            left = Math.max(0, left - padding);
+            bottom = Math.min(height, bottom + padding);
+            right = Math.min(width, right + padding);
+
+            const cropWidth = right - left;
+            const cropHeight = bottom - top;
+
+            const croppedCanvas = document.createElement('canvas');
+            croppedCanvas.width = cropWidth;
+            croppedCanvas.height = cropHeight;
+            const croppedCtx = croppedCanvas.getContext('2d');
+            croppedCtx.fillStyle = "#ffffff";
+            croppedCtx.fillRect(0, 0, cropWidth, cropHeight);
+            croppedCtx.drawImage(canvasPdf, left, top, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+            const MAX_SIZE = 500;
+            const scale = Math.min(MAX_SIZE / cropWidth, MAX_SIZE / cropHeight, 1);
+
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = MAX_SIZE;
+            finalCanvas.height = MAX_SIZE;
+            const finalCtx = finalCanvas.getContext('2d');
+            finalCtx.imageSmoothingEnabled = true;
+            finalCtx.imageSmoothingQuality = 'high';
+
+            finalCtx.fillStyle = '#ffffff';
+            finalCtx.fillRect(0, 0, MAX_SIZE, MAX_SIZE);
+
+            const newWidth = cropWidth * scale;
+            const newHeight = cropHeight * scale;
+            const offsetX = (MAX_SIZE - newWidth) / 2;
+            const offsetY = (MAX_SIZE - newHeight) / 2;
+
+            finalCtx.drawImage(croppedCanvas, 0, 0, cropWidth, cropHeight, offsetX, offsetY, newWidth, newHeight);
+
+            return finalCanvas.toDataURL('image/png');
+        }
+    </script>
+</body>
+</html>
