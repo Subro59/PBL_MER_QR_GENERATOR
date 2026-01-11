@@ -151,9 +151,16 @@
             border: 2px dashed var(--dark-border);
             background: var(--dark-element-bg);
             color: var(--medium-light-text);
-            transition: border-color 0.3s ease, background 0.3s ease;
+            transition: all 0.3s ease;
             outline-offset: 2px;
             cursor: pointer;
+            display: block;
+        }
+        /* Style for when a file is being dragged over */
+        .pdf-section input[type="file"].drag-over {
+            border-color: var(--primary-orange);
+            background: var(--dark-border);
+            transform: scale(1.02);
         }
         .pdf-section input[type="file"]:hover {
             background: #555555;
@@ -276,22 +283,51 @@
         const btnPNG = document.getElementById('download-png');
         const prevBtn = document.getElementById('prev-btn');
         const nextBtn = document.getElementById('next-btn');
-        const btnZIP = document.getElementById('download-zip'); // New: Reference to the ZIP button
+        const btnZIP = document.getElementById('download-zip'); 
 
         let images = [];
         let currentIndex = 0;
 
+        // --- Drag and Drop Logic ---
+        inputPdf.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            inputPdf.classList.add('drag-over');
+        });
+
+        inputPdf.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            inputPdf.classList.remove('drag-over');
+        });
+
+        inputPdf.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            inputPdf.classList.remove('drag-over');
+            
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                processFileList(e.dataTransfer.files);
+            }
+        });
+
         inputPdf.addEventListener('change', async (e) => {
-            const files = Array.from(e.target.files).filter(f => f.type.includes('pdf'));
+            if (e.target.files && e.target.files.length > 0) {
+                processFileList(e.target.files);
+            }
+        });
+
+        async function processFileList(fileList) {
+            const files = Array.from(fileList).filter(f => f.type.includes('pdf'));
             if (!files.length) return;
 
             images = [];
             currentIndex = 0;
             disableNavButtons(true);
             btnPNG.style.display = 'none';
-            btnZIP.style.display = 'none'; // New: Hide ZIP button on new upload
+            btnZIP.style.display = 'none'; 
             preview.src = '';
-            filenameDiv.textContent = '';
+            filenameDiv.textContent = 'Processing...';
 
             for (const file of files) {
                 const imgDataURL = await processPDF(file);
@@ -301,9 +337,11 @@
             if (images.length) {
                 showImage(0);
                 disableNavButtons(false);
-                btnZIP.style.display = 'inline-block'; // New: Show ZIP button when images are available
+                btnZIP.style.display = 'inline-block'; 
+            } else {
+                filenameDiv.textContent = 'No valid PDF found.';
             }
-        });
+        }
 
         function disableNavButtons(disable) {
             prevBtn.disabled = disable || currentIndex === 0;
@@ -337,34 +375,27 @@
             downloadImage(dataURL, filename);
         };
 
-        // New: Function to download all images as a ZIP
         btnZIP.onclick = async () => {
             if (images.length === 0) return;
 
             const zip = new JSZip();
             
-            // Add each image to the zip file
             images.forEach(image => {
-                // Remove the "data:image/png;base64," prefix to get raw base64 data
                 const base64Data = image.dataURL.split(',')[1];
                 zip.file(image.filename, base64Data, { base64: true });
             });
 
             try {
-                // Generate the zip file
                 const zipBlob = await zip.generateAsync({ type: "blob" });
-
-                // Create a download link for the zip file
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(zipBlob);
-                link.download = 'converted_pdfs.zip'; // Default name for the zip file
-                document.body.appendChild(link); // Append to body to make it clickable
+                link.download = 'merchant_pos_qrs.zip'; 
+                document.body.appendChild(link); 
                 link.click();
-                document.body.removeChild(link); // Clean up the temporary link
-                URL.revokeObjectURL(link.href); // Release the object URL
+                document.body.removeChild(link); 
+                URL.revokeObjectURL(link.href); 
             } catch (error) {
                 console.error("Error generating ZIP file:", error);
-                // In a real application, you might show a user-friendly error message here
             }
         };
 
@@ -444,4 +475,3 @@
     </script>
 </body>
 </html>
-
